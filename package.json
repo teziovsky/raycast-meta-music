@@ -3,7 +3,7 @@
   "name": "meta-music",
   "title": "Meta Music",
   "description": "Manage the ID3 tags of audio music directly in Raycast!",
-  "icon": "command-icon.png",
+  "icon": "meta-music.png",
   "author": "teziovsky",
   "categories": [
     "Media",
@@ -12,7 +12,7 @@
   "license": "MIT",
   "commands": [
     {
-      "name": "index",
+      "name": "manage-id3-tags",
       "title": "Manage ID3 Tags",
       "description": "Manage the ID3 tags of audio music directly in Raycast!",
       "mode": "view"
@@ -31,6 +31,8 @@
   ],
   "dependencies": {
     "@raycast/api": "^1.68.1",
+    "@raycast/utils": "^1.12.5",
+    "mime": "^4.0.1",
     "node-id3": "^0.2.6"
   },
   "devDependencies": {
