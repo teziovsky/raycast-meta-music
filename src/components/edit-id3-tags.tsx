@@ -5,8 +5,12 @@ import { readID3Tags } from "@/utils/id3";
 import NodeID3, { Tags } from "node-id3";
 import { useState } from "react";
 
-interface TagsSchema extends Omit<Tags, "performerInfo"> {
-  performerInfo: string[];
+interface TagsForm extends Omit<Tags, "trackNumber" | "partOfSet" | "comment"> {
+  trackNumber: string;
+  allTracks: string;
+  partNumber: string;
+  allParts: string;
+  comments: string;
 }
 
 export interface EditID3TagsProps {
@@ -19,15 +23,19 @@ export const EditID3Tags = ({ file }: EditID3TagsProps) => {
 
   const tags = readID3Tags(file);
 
-  const { handleSubmit, itemProps, reset } = useForm<TagsSchema>({
+  const { handleSubmit, itemProps, reset } = useForm<TagsForm>({
     async onSubmit(values) {
       setIsLoading(true);
       const toast = await showToast({ style: Toast.Style.Animated, title: "Updating tags" });
 
       try {
-        const payload = {
-          ...values,
-          performerInfo: values.performerInfo.join("/"),
+        const { trackNumber, allTracks, partNumber, allParts, comments, ...restValues } = values;
+
+        const payload: Tags = {
+          ...restValues,
+          trackNumber: allTracks ? `${trackNumber}/${allTracks}` : trackNumber,
+          partOfSet: allParts ? `${partNumber}/${allParts}` : partNumber,
+          comment: comments ? { language: "eng", text: comments } : undefined,
         };
 
         const success = NodeID3.update(payload, file);
@@ -40,9 +48,15 @@ export const EditID3Tags = ({ file }: EditID3TagsProps) => {
             title: "",
             artist: "",
             album: "",
+            performerInfo: "",
+            composer: "",
             genre: "",
             year: "",
-            performerInfo: [""],
+            trackNumber: "",
+            allTracks: "",
+            partNumber: "",
+            allParts: "",
+            comments: "",
           });
 
           pop();
@@ -59,9 +73,30 @@ export const EditID3Tags = ({ file }: EditID3TagsProps) => {
       title: tags.title ?? "",
       artist: tags.artist ?? "",
       album: tags.album ?? "",
+      performerInfo: tags.performerInfo ?? "",
+      composer: tags.composer ?? "",
       genre: tags.genre ?? "",
       year: tags.year ?? "",
-      performerInfo: tags.performerInfo?.split("/") ?? [""],
+      trackNumber: tags.trackNumber?.split("/")?.[0] ?? "",
+      allTracks: tags.trackNumber?.split("/")?.[1] ?? "",
+      partNumber: tags.partOfSet?.split("/")?.[0] ?? "",
+      allParts: tags.partOfSet?.split("/")?.[1] ?? "",
+      comments: tags.comment?.text ?? "",
+    },
+    validation: {
+      performerInfo: (value) => {
+        if (value) {
+          const artists = value.split("/");
+          if (artists.some((artist) => artist.trim().length === 0)) {
+            return "Please enter a valid artist";
+          }
+        }
+      },
+      year: isValidNumberValidation,
+      trackNumber: isValidNumberValidation,
+      allTracks: isValidNumberValidation,
+      partNumber: isValidNumberValidation,
+      allParts: isValidNumberValidation,
     },
   });
 
@@ -77,9 +112,26 @@ export const EditID3Tags = ({ file }: EditID3TagsProps) => {
       <Form.TextField title="Artist" placeholder="Artist" autoFocus {...itemProps.artist} />
       <Form.TextField title="Title" placeholder="Title" {...itemProps.title} />
       <Form.TextField title="Album" placeholder="Album" {...itemProps.album} />
+      <Form.TextField
+        title="Album Artist"
+        placeholder="Album Artist"
+        info="Values should be separated by a forward slash"
+        {...itemProps.performerInfo}
+      />
+      <Form.TextField title="Composer" placeholder="Composer" {...itemProps.composer} />
       <Form.TextField title="Genre" placeholder="Genre" {...itemProps.genre} />
       <Form.TextField title="Year" placeholder="Year" {...itemProps.year} />
-      <Form.TagPicker title="Performer Info" placeholder="Performer Info" {...itemProps.performerInfo}></Form.TagPicker>
+      <Form.TextField title="Track Number" placeholder="Track Number" {...itemProps.trackNumber} />
+      <Form.TextField title="All Tracks" placeholder="All Tracks" {...itemProps.allTracks} />
+      <Form.TextField title="Disc Number" placeholder="Disc Number" {...itemProps.partNumber} />
+      <Form.TextField title="All Discs" placeholder="All Discs" {...itemProps.allParts} />
+      <Form.TextArea title="Comments" placeholder="Comments" {...itemProps.comments} />
     </Form>
   );
 };
+
+function isValidNumberValidation(value: string | undefined) {
+  if (value && isNaN(Number(value))) {
+    return "Please enter a valid number";
+  }
+}

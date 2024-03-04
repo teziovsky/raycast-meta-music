@@ -32,6 +32,8 @@
   "dependencies": {
     "@raycast/api": "^1.68.1",
     "@raycast/utils": "^1.12.5",
+    "date-fns": "^3.3.1",
+    "filesize": "^10.1.0",
     "mime": "^4.0.1",
     "node-id3": "^0.2.6"
   },

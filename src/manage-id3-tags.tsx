@@ -1,7 +1,7 @@
 import { Action, ActionPanel, Icon, List } from "@raycast/api";
 
 import { EditID3Tags } from "@/components/edit-id3-tags";
-import { getDirData, getMusicDir, getParentDir } from "@/utils/files";
+import { FileGeneralMetadata, getDirData, getFileGeneralMetadata, getMusicDir, getParentDir } from "@/utils/files";
 import { readID3Tags } from "@/utils/id3";
 import { Tags } from "node-id3";
 import { homedir } from "node:os";
@@ -15,18 +15,24 @@ export default function Command() {
   const files = getDirData(actualDir);
   const filteredFiles = files.filter((file) => file.name.toLowerCase().includes(searchText.toLowerCase()));
 
-  const [isShowingDetail, setIsShowingDetail] = useState(false);
-  const [fileTags, setFileTags] = useState<Tags>();
+  const [isShowingDetail, setIsShowingDetail] = useState(true);
+  const [fileGeneralMetadata, setFileGeneralMetadata] = useState<FileGeneralMetadata>();
+  const [fileAudioMetadata, setFileAudioMetadata] = useState<Tags>();
 
   const onSelectionChange = useCallback(
     (id: string | null) => {
       const foundFile = files.find((file) => String(file.id) === id);
       if (!foundFile) return;
+      const path = `${foundFile.path}/${foundFile.name}`;
+
+      const generalMetadata = getFileGeneralMetadata(path);
+      setFileGeneralMetadata(generalMetadata);
+
       if (foundFile.isDir) {
-        setFileTags(undefined);
+        setFileAudioMetadata(undefined);
       } else {
-        const tags = readID3Tags(`${foundFile.path}/${foundFile.name}`);
-        setFileTags(tags);
+        const tags = readID3Tags(path);
+        setFileAudioMetadata(tags);
       }
     },
     [files],
@@ -56,16 +62,67 @@ export default function Command() {
                 isLoading={true}
                 metadata={
                   <List.Item.Detail.Metadata>
-                    <List.Item.Detail.Metadata.Label title="Metadata" />
-                    {fileTags?.artist ? (
-                      <List.Item.Detail.Metadata.TagList title="Artist">
-                        <List.Item.Detail.Metadata.TagList.Item text={fileTags.artist} />
-                      </List.Item.Detail.Metadata.TagList>
+                    <List.Item.Detail.Metadata.Label title="General Metadata" />
+                    <List.Item.Detail.Metadata.Label title="Name" text={file.name} />
+                    {fileGeneralMetadata?.size && !file.isDir ? (
+                      <List.Item.Detail.Metadata.Label title="Size" text={fileGeneralMetadata.size} />
                     ) : null}
-                    {fileTags?.title ? (
-                      <List.Item.Detail.Metadata.TagList title="Title">
-                        <List.Item.Detail.Metadata.TagList.Item text={fileTags.title} />
-                      </List.Item.Detail.Metadata.TagList>
+                    {fileGeneralMetadata?.createdAt ? (
+                      <List.Item.Detail.Metadata.Label title="Created At" text={fileGeneralMetadata.createdAt} />
+                    ) : null}
+                    {fileGeneralMetadata?.updatedAt ? (
+                      <List.Item.Detail.Metadata.Label title="Updated At" text={fileGeneralMetadata.updatedAt} />
+                    ) : null}
+
+                    <List.Item.Detail.Metadata.Separator />
+
+                    <List.Item.Detail.Metadata.Label title="Audio Metadata" />
+                    {fileAudioMetadata?.title ? (
+                      <List.Item.Detail.Metadata.Label title="Title" text={fileAudioMetadata.title} />
+                    ) : null}
+                    {fileAudioMetadata?.artist ? (
+                      <List.Item.Detail.Metadata.Label title="Artist" text={fileAudioMetadata.artist} />
+                    ) : null}
+                    {fileAudioMetadata?.album ? (
+                      <List.Item.Detail.Metadata.Label title="Album" text={fileAudioMetadata.album} />
+                    ) : null}
+                    {fileAudioMetadata?.performerInfo ? (
+                      <List.Item.Detail.Metadata.Label
+                        title="Album Artist"
+                        text={fileAudioMetadata.performerInfo.split("/").join(", ")}
+                      />
+                    ) : null}
+                    {fileAudioMetadata?.composer ? (
+                      <List.Item.Detail.Metadata.Label title="Composer" text={fileAudioMetadata.composer} />
+                    ) : null}
+                    {fileAudioMetadata?.genre ? (
+                      <List.Item.Detail.Metadata.Label title="Genre" text={fileAudioMetadata.genre} />
+                    ) : null}
+                    {fileAudioMetadata?.year && parseInt(fileAudioMetadata.year, 10) > 0 ? (
+                      <List.Item.Detail.Metadata.Label title="Year" text={fileAudioMetadata.year} />
+                    ) : null}
+                    {fileAudioMetadata?.trackNumber ? (
+                      <List.Item.Detail.Metadata.Label
+                        title="Track Number"
+                        text={
+                          fileAudioMetadata.trackNumber.split("/").length > 1
+                            ? `${fileAudioMetadata.trackNumber.split("/")[0]} of ${fileAudioMetadata.trackNumber.split("/")[1]}`
+                            : fileAudioMetadata.trackNumber
+                        }
+                      />
+                    ) : null}
+                    {fileAudioMetadata?.partOfSet ? (
+                      <List.Item.Detail.Metadata.Label
+                        title="Disc Number"
+                        text={
+                          fileAudioMetadata.partOfSet.split("/").length > 1
+                            ? `${fileAudioMetadata.partOfSet.split("/")[0]} of ${fileAudioMetadata.partOfSet.split("/")[1]}`
+                            : fileAudioMetadata.partOfSet
+                        }
+                      />
+                    ) : null}
+                    {fileAudioMetadata?.comment ? (
+                      <List.Item.Detail.Metadata.Label title="Comment" text={fileAudioMetadata.comment?.text} />
                     ) : null}
                   </List.Item.Detail.Metadata>
                 }
@@ -75,11 +132,6 @@ export default function Command() {
               <ActionPanel>
                 {!file.isDir ? (
                   <ActionPanel.Section>
-                    <Action
-                      title="Show Tags"
-                      icon={Icon.Music}
-                      onAction={() => readID3Tags(`${file.path}/${file.name}`)}
-                    />
                     <Action.Push
                       title="Edit Tags"
                       icon={Icon.Pencil}
